@@ -1,0 +1,238 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Devotion — Eternal Sky</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500&family=Cormorant+Garamond:wght@300;500&family=Inter:wght@300&display=swap" rel="stylesheet">
+<style>
+/* ======================================================
+   GLOBAL STYLE
+   ====================================================== */
+:root{--gold:#e6d3a3;--soft:#f5f3ee;--glass:rgba(255,255,255,.08)}
+*{box-sizing:border-box}
+body{margin:0;background:#02030d;color:var(--soft);font-family:'Cormorant Garamond',serif;overflow-x:hidden}
+canvas{position:fixed;inset:0;z-index:-2}
+section{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:90px 20px}
+.card{max-width:900px;padding:70px;border-radius:36px;background:var(--glass);backdrop-filter:blur(26px);border:1px solid rgba(255,255,255,.18);box-shadow:0 0 120px rgba(230,211,163,.08);opacity:0;transform:translateY(120px) scale(.96);transition:2.4s cubic-bezier(.2,.8,.2,1)}
+.show{opacity:1;transform:none}
+.title{font-family:'Cinzel',serif;font-size:clamp(44px,7vw,110px);letter-spacing:7px;color:var(--gold);margin-bottom:20px}
+p{font-size:26px;line-height:1.9}
+.nameInput{margin-top:35px;padding:14px 26px;border-radius:40px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:#fff;font-family:Inter;font-size:15px;outline:none;text-align:center}
+.symbol{margin-top:40px;font-size:42px;color:var(--gold);opacity:0;transition:3s}
+.reveal .symbol{opacity:1}
+.hint{position:fixed;bottom:30px;width:100%;text-align:center;font-size:13px;opacity:.35;font-family:Inter}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas><!-- ======================================================
+     TEXT SECTIONS
+     ====================================================== --><section>
+ <div class="card">
+  <div class="title">Before Time</div>
+  <p>Some presences are not encountered. They are recognized.</p>
+ </div>
+</section>
+<section>
+ <div class="card">
+  <p>The universe practiced this moment endlessly until it finally became you.</p>
+ </div>
+</section>
+<section>
+ <div class="card">
+  <p>Every version of reality adjusted — just enough — so our paths would not miss.</p>
+ </div>
+</section>
+<section id="final">
+ <div class="card">
+  <p>Tell the sky the name it already remembers.</p>
+  <input class="nameInput" id="nameField" placeholder="type the name and pause" />
+  <div class="symbol" id="symbol">✧ ⟡ ∞ ⟡ ✧</div>
+ </div>
+</section>
+<div class="hint">stay… the sky listens</div><script>
+/* ======================================================
+   SCROLL REVEAL ENGINE
+   ====================================================== */
+const obs=new IntersectionObserver(e=>e.forEach(x=>x.isIntersecting&&x.target.classList.add('show')),{threshold:.35});
+document.querySelectorAll('.card').forEach(el=>obs.observe(el));
+
+/* ======================================================
+   CANVAS INITIALIZATION
+   ====================================================== */
+const canvas=document.getElementById('sky');
+const ctx=canvas.getContext('2d');
+let w,h;function resize(){w=canvas.width=innerWidth;h=canvas.height=innerHeight}
+addEventListener('resize',resize);resize();
+
+/* ======================================================
+   STAR CLASS
+   ====================================================== */
+class Star{
+ constructor(){this.reset()}
+ reset(){this.x=Math.random()*w;this.y=Math.random()*h;this.z=Math.random()*1.8+.2;this.v=Math.random()*.15+.02}
+ update(){this.y+=this.v*this.z;if(this.y>h)this.reset()}
+ draw(){ctx.fillStyle='rgba(255,255,255,'+(0.2+this.z)+')';ctx.fillRect(this.x,this.y,this.z*2,this.z*2)}
+}
+const stars=Array.from({length:450},()=>new Star());
+
+/* ======================================================
+   PARALLAX MOTION
+   ====================================================== */
+let mx=0,my=0;
+addEventListener('mousemove',e=>{mx=(e.clientX/w-.5)*40;my=(e.clientY/h-.5)*40});
+
+/* ======================================================
+   BREATHING NEBULA BACKGROUND
+   ====================================================== */
+let t=0;
+function gradient(){
+ const g=ctx.createRadialGradient(w/2+mx,h/2+my,120,w/2,h/2,w);
+ const k=(Math.sin(t*.002)+1)/2;
+ g.addColorStop(0,`rgba(${25+90*k},${10+30*k},${90+150*k},1)`);
+ g.addColorStop(1,'#02030d');
+ ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+ t++;
+}
+
+/* ======================================================
+   METEOR SYSTEM
+   ====================================================== */
+let meteor=null;
+setInterval(()=>meteor={x:Math.random()*w,y:0,dx:6,dy:6,life:120},9000);
+
+/* ======================================================
+   CONSTELLATION NAME BUILDER
+   ====================================================== */
+let points=[],particles=[];
+function buildName(text){
+ const off=document.createElement('canvas');off.width=900;off.height=220;
+ const o=off.getContext('2d');o.fillStyle='#fff';o.font='130px Cinzel';o.textAlign='center';
+ o.fillText(text,450,160);
+ const d=o.getImageData(0,0,900,220).data;
+ points=[];
+ for(let y=0;y<220;y+=4){
+  for(let x=0;x<900;x+=4){
+   if(d[(y*900+x)*4+3]>150)points.push({x:(x/900)*w,y:(y/220)*h});
+  }
+ }
+ particles=points.map(p=>({x:Math.random()*w,y:Math.random()*h,tx:p.x,ty:p.y}));
+}
+
+/* ======================================================
+   INPUT LISTENER WITH MEMORY
+   ====================================================== */
+let typingTimer;const input=document.getElementById('nameField');
+input.addEventListener('input',()=>{
+ clearTimeout(typingTimer);
+ typingTimer=setTimeout(()=>{
+  localStorage.setItem('eternalName',input.value);
+  buildName(input.value);
+  document.getElementById('symbol').textContent=input.value;
+  document.getElementById('final').classList.add('reveal');
+  vibrate();
+  tone();
+ },900);
+});
+
+/* ======================================================
+   RESTORE MEMORY
+   ====================================================== */
+const saved=localStorage.getItem('eternalName');
+if(saved){input.value=saved;buildName(saved);setTimeout(()=>document.getElementById('final').classList.add('reveal'),1200)}
+
+/* ======================================================
+   AUDIO + HAPTIC FEEDBACK
+   ====================================================== */
+function tone(){
+ const a=new AudioContext();const o=a.createOscillator();const g=a.createGain();
+ o.type='sine';o.frequency.value=432;g.gain.value=.0001;o.connect(g);g.connect(a.destination);
+ o.start();g.gain.exponentialRampToValueAtTime(.05,a.currentTime+.4);
+ g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+2);o.stop(a.currentTime+2);
+}
+function vibrate(){if(navigator.vibrate)navigator.vibrate([80,40,120])}
+
+/* ======================================================
+   HEART CONSTELLATION AFTER SILENCE
+   ====================================================== */
+let idle=0;setInterval(()=>{idle++;if(idle===30)makeHeart()},1000);
+addEventListener('mousemove',()=>idle=0);
+addEventListener('keydown',()=>idle=0);
+
+function makeHeart(){
+ const heart=[];
+ for(let i=0;i<200;i++){
+  const t=i/200*Math.PI*2;
+  const x=16*Math.pow(Math.sin(t),3);
+  const y=-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t));
+  heart.push({x:w/2+x*12,y:h/2+y*12});
+ }
+ particles=heart.map(p=>({x:Math.random()*w,y:Math.random()*h,tx:p.x,ty:p.y}));
+}
+
+/* ======================================================
+   MAIN RENDER LOOP
+   ====================================================== */
+function draw(){
+ gradient();
+ ctx.save();ctx.translate(mx,my);
+ stars.forEach(s=>{s.update();s.draw()});ctx.restore();
+ particles.forEach(p=>{p.x+=(p.tx-p.x)*.02;p.y+=(p.ty-p.y)*.02;ctx.fillStyle='rgba(230,211,163,.95)';ctx.fillRect(p.x,p.y,2,2)});
+ if(meteor){ctx.strokeStyle='rgba(255,255,255,.8)';ctx.beginPath();ctx.moveTo(meteor.x,meteor.y);ctx.lineTo(meteor.x-40,meteor.y-40);ctx.stroke();meteor.x+=meteor.dx;meteor.y+=meteor.dy;if(--meteor.life<0)meteor=null}
+ requestAnimationFrame(draw)
+}
+draw();
+</script></body>
+</html><!-- EXTENDED DREAM LAYERS --><style>
+/* Aurora gradients */
+.aurora{position:fixed;inset:0;pointer-events:none;mix-blend-mode:screen;opacity:.35;animation:auroraMove 40s linear infinite;background:radial-gradient(circle at 20% 30%,#ff9de2,transparent 40%),radial-gradient(circle at 80% 60%,#9ddcff,transparent 40%),radial-gradient(circle at 50% 90%,#ffd6a5,transparent 40%);} 
+@keyframes auroraMove{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}}
+
+/* constellation canvas overlay */
+#constellation{position:fixed;inset:0;pointer-events:none;opacity:.6}
+
+/* breathing vignette */
+.vignette{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,transparent 55%,rgba(0,0,0,.55));animation:breathe 12s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.5}50%{opacity:.75}}
+
+/* floating memories */
+.memory{position:fixed;font-size:clamp(14px,2vw,22px);opacity:0;color:#fff;white-space:nowrap;animation:memoryFloat linear forwards}
+@keyframes memoryFloat{0%{transform:translateY(40px) scale(.8);opacity:0}10%{opacity:.7}90%{opacity:.7}100%{transform:translateY(-120vh) scale(1.2);opacity:0}}
+</style><canvas id="constellation"></canvas>
+
+<div class="aurora"></div>
+<div class="vignette"></div><script>
+/* CONSTELLATION LOVE FIELD */
+const starCanvas=document.getElementById('constellation');
+const sctx=starCanvas.getContext('2d');
+let sw,sh,stars=[];
+function resizeStars(){sw=starCanvas.width=innerWidth;sh=starCanvas.height=innerHeight}
+addEventListener('resize',resizeStars);resizeStars();
+for(let i=0;i<120;i++){stars.push({x:Math.random()*sw,y:Math.random()*sh,vx:(Math.random()-.5)*.2,vy:(Math.random()-.5)*.2})}
+function drawStars(){sctx.clearRect(0,0,sw,sh);for(let i=0;i<stars.length;i++){let a=stars[i];a.x+=a.vx;a.y+=a.vy;if(a.x<0||a.x>sw)a.vx*=-1;if(a.y<0||a.y>sh)a.vy*=-1;sctx.fillStyle='#fff';sctx.fillRect(a.x,a.y,1.5,1.5);for(let j=i+1;j<stars.length;j++){let b=stars[j];let d=Math.hypot(a.x-b.x,a.y-b.y);if(d<120){sctx.strokeStyle='rgba(255,255,255,'+(1-d/120)*.25+')';sctx.beginPath();sctx.moveTo(a.x,a.y);sctx.lineTo(b.x,b.y);sctx.stroke();}}}requestAnimationFrame(drawStars)}
+drawStars();
+
+/* MEMORY WHISPERS */
+const phrases=[
+"you are my quiet forever",
+"every universe led me to you",
+"souls recognize before eyes do",
+"time rests when you breathe",
+"my existence learned meaning",
+"infinite chose your name",
+"the stars softened for you",
+"destiny whispered gently",
+"my heart found its language",
+"eternity feels shorter with you"
+];
+function spawnMemory(){const d=document.createElement('div');d.className='memory';d.textContent=phrases[Math.floor(Math.random()*phrases.length)];d.style.left=Math.random()*100+'vw';d.style.animationDuration=20+Math.random()*20+'s';document.body.appendChild(d);setTimeout(()=>d.remove(),40000)}
+setInterval(spawnMemory,5000);
+
+/* DAY TO NIGHT LOVE CYCLE */
+let cycle=0;function skyCycle(){cycle+=.0005;document.body.style.background=`radial-gradient(circle at 50% ${40+Math.sin(cycle)*20}%, hsl(${260+Math.sin(cycle)*80},60%,${10+Math.sin(cycle)*10}%), #02020a)`;requestAnimationFrame(skyCycle)}skyCycle();
+
+/* SOFT PARALLAX DEPTH */
+document.addEventListener('mousemove',e=>{const x=(e.clientX/innerWidth-.5)*20;const y=(e.clientY/innerHeight-.5)*20;document.querySelector('.aurora').style.transform=`translate(${x}px,${y}px)`;document.querySelector('.vignette').style.transform=`translate(${-x}px,${-y}px)`});
+
+/* HEARTBEAT PULSE */
+let beat=1;setInterval(()=>{beat=beat===1?1.04:1;document.documentElement.style.setProperty('--beat',beat)},900);
+</script>
